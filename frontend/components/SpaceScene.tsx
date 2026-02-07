@@ -36,7 +36,7 @@ const beamMaterial = new THREE.ShaderMaterial({
   blending: THREE.AdditiveBlending,
 });
 
-/* 🛸 SLEEK UFO COMPONENT */
+/* 🛸 SLEEK UFO COMPONENT - FASTER EXIT */
 function SleekUFO() {
   const groupRef = useRef<THREE.Group>(null);
   const ringRef = useRef<THREE.Mesh>(null);
@@ -51,67 +51,84 @@ function SleekUFO() {
       // 1. FLY IN (0s - 2s)
       if (t < 2) {
         groupRef.current.position.set(
-          THREE.MathUtils.lerp(-20, 0, t / 2),
-          THREE.MathUtils.lerp(10, 4.5, t / 2), // Hover higher to cover Title
+          THREE.MathUtils.lerp(-25, 0, t / 2),
+          THREE.MathUtils.lerp(12, 4.5, t / 2),
           THREE.MathUtils.lerp(-10, 0, t / 2)
         );
         groupRef.current.rotation.z = THREE.MathUtils.lerp(-0.5, 0, t / 2);
       } 
-      // 2. HOVER & SCAN (2s - 5s)
-      else if (t >= 2 && t < 5) {
-        groupRef.current.position.y = 4.5 + Math.sin(t * 2) * 0.1;
+      // 2. HOVER & SCAN (2s - 4s) --> REDUCED DURATION
+      // It now leaves at 4.0s instead of 6.0s
+      else if (t >= 2 && t < 4.0) {
+        groupRef.current.position.y = 4.5 + Math.sin(t * 2) * 0.1; 
+        groupRef.current.rotation.z = Math.sin(t) * 0.05; 
+        
         if (!shooting) setShooting(true);
       }
-      // 3. FLY AWAY
+      // 3. SMOOTH EXIT (4s onwards)
       else {
         setShooting(false);
-        groupRef.current.position.x += 0.5;
-        groupRef.current.position.y += 0.3;
-        groupRef.current.rotation.z = 0.3;
+        
+        // Calculate exit progress (Starts at 4.0s, takes 2.5s to leave)
+        const exitProgress = (t - 4.0) / 2.5;
+
+        if (exitProgress <= 1) {
+          groupRef.current.position.set(
+            THREE.MathUtils.lerp(0, 30, exitProgress),    // Fly Right
+            THREE.MathUtils.lerp(4.5, 15, exitProgress),  // Fly Up
+            THREE.MathUtils.lerp(0, -10, exitProgress)    // Fly Back
+          );
+          
+          // Bank into the turn
+          groupRef.current.rotation.z = THREE.MathUtils.lerp(0, -0.8, exitProgress); 
+          groupRef.current.rotation.x = THREE.MathUtils.lerp(0.2, 0.5, exitProgress);
+        } else {
+           // Keep momentum after lerp
+           groupRef.current.position.x += 0.3;
+           groupRef.current.position.y += 0.2;
+        }
       }
     }
 
     // Spin the outer ring
     if (ringRef.current) {
-      ringRef.current.rotation.z += 0.1; 
+      ringRef.current.rotation.z += 0.15; 
     }
 
-    // BEAM LOGIC
+    // Beam Logic - Snappy closing
     if (beamRef.current) {
       if (shooting) {
         beamRef.current.visible = true;
-        // Open the beam
         const openProgress = Math.min(1, (t - 2) * 3);
         beamRef.current.scale.set(openProgress, 1, openProgress);
       } else {
+        // Close beam immediately when leaving
         beamRef.current.visible = false;
+        beamRef.current.scale.set(0, 1, 0);
       }
     }
   });
 
   return (
-    <group ref={groupRef} position={[-20, 10, 0]} scale={[0.5, 0.5, 0.5]}>
-      {/* --- UFO BODY --- */}
+    <group ref={groupRef} position={[-25, 12, 0]} scale={[0.5, 0.5, 0.5]}>
       <group rotation={[0.2, 0, 0]}>
-        {/* Dome (Glowing Core) */}
+        {/* Core */}
         <mesh position={[0, 0.5, 0]}>
           <sphereGeometry args={[1, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2]} />
           <meshStandardMaterial color="#00ffff" emissive="#0088ff" emissiveIntensity={2} toneMapped={false} />
         </mesh>
-        {/* Main Disc (Dark Metal) */}
+        {/* Hull */}
         <mesh scale={[1, 0.3, 1]}>
           <sphereGeometry args={[2.5, 32, 32]} />
-          <meshStandardMaterial color="#222" metalness={1} roughness={0.2} envMapIntensity={3} />
+          <meshStandardMaterial color="#333" metalness={1} roughness={0.1} envMapIntensity={3} />
         </mesh>
-        {/* Spinning Ring (Lights) */}
+        {/* Ring */}
         <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
-           <torusGeometry args={[3, 0.1, 16, 100]} />
+           <torusGeometry args={[3, 0.05, 16, 100]} />
            <meshBasicMaterial color="#00ff00" toneMapped={false} />
         </mesh>
       </group>
-
-      {/* --- THE BEAM --- */}
-      {/* Large Cone: Starts at UFO, covers Title + Subtitle */}
+      {/* Beam */}
       <mesh ref={beamRef} position={[0, -8, 0]} visible={false} material={beamMaterial}>
         <cylinderGeometry args={[0.1, 9, 16, 32, 1, true]} />
       </mesh>
@@ -119,7 +136,7 @@ function SleekUFO() {
   );
 }
 
-/* 🌍 EARTH + MOON (Original) */
+/* 🌍 EARTH + MOON */
 function EarthSystem() {
   const groupRef = useRef<THREE.Group>(null);
   const earthRef = useRef<THREE.Mesh>(null);
@@ -134,6 +151,7 @@ function EarthSystem() {
     if (moonRef.current) {
       moonRef.current.position.x = Math.sin(t * 0.2) * 6; 
       moonRef.current.position.z = Math.cos(t * 0.2) * 6;
+      moonRef.current.rotation.y = t * 0.4; // Fast rotation for visibility
     }
   });
 
@@ -143,13 +161,17 @@ function EarthSystem() {
         {earthMap ? <meshStandardMaterial map={earthMap} metalness={0.1} roughness={0.7} /> : <meshStandardMaterial color="#1E90FF" />}
       </Sphere>
       <Sphere ref={moonRef} args={[0.45, 32, 32]}>
-        {moonMap ? <meshStandardMaterial map={moonMap} metalness={0.1} roughness={0.8} /> : <meshStandardMaterial color="#888888" />}
+        {moonMap ? (
+          <meshStandardMaterial map={moonMap} color="#555555" metalness={0.0} roughness={0.9} /> 
+        ) : (
+          <meshStandardMaterial color="#333333" metalness={0.0} roughness={0.9} />
+        )}
       </Sphere>
     </group>
   );
 }
 
-/* 🛰️ SATELLITE (Original) */
+/* 🛰️ SINGLE SATELLITE */
 function SingleSatellite({ speed, radius, offset, inclination, color }: { speed: number, radius: number, offset: number, inclination: number, color: string }) {
   const satRef = useRef<THREE.Group>(null);
   useFrame(({ clock }) => {
@@ -172,32 +194,64 @@ function SingleSatellite({ speed, radius, offset, inclination, color }: { speed:
   );
 }
 
-/* ☄️ ASTEROIDS (Original) */
+/* ☄️ HORIZONTALLY DRIFTING ASTEROID BELT */
 function AsteroidBelt() {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const asteroidTexture = useTexture("/textures/asteroid.jpg", (t) => {}, () => {});
   const count = 3000; 
   const dummy = useMemo(() => new THREE.Object3D(), []);
+
   const particles = useMemo(() => {
     const temp = [];
     for (let i = 0; i < count; i++) {
       const t = Math.random();
-      const xBase = (t - 0.5) * 45; const zBase = (xBase * xBase) * 0.04 - 10; const x = xBase + (Math.random() - 0.5) * 4; const y = (Math.random() - 0.5) * 3; const z = zBase + (Math.random() - 0.5) * 4; const baseSize = Math.random() * 0.06 + 0.01; const scale = baseSize * (0.8 + Math.random() * 0.5); temp.push({ x, y, z, scale, speed: (Math.random() - 0.5) * 0.002, rot: Math.random() * Math.PI });
+      const xBase = (t - 0.5) * 45; 
+      const zBase = (xBase * xBase) * 0.04 - 10; 
+      const x = xBase + (Math.random() - 0.5) * 4;
+      const y = (Math.random() - 0.5) * 3; 
+      const z = zBase + (Math.random() - 0.5) * 4;
+      const baseSize = Math.random() * 0.06 + 0.01;
+      const scale = baseSize * (0.8 + Math.random() * 0.5); 
+      // Horizontal drift only (vy = 0)
+      const vx = (Math.random() - 0.5) * 0.005;
+      const vy = 0; 
+      const vz = (Math.random() - 0.5) * 0.005;
+      temp.push({ x, y, z, vx, vy, vz, scale, rotSpeed: (Math.random() - 0.5) * 0.002, rot: Math.random() * Math.PI });
     }
     return temp;
   }, [count]);
+
   useFrame(() => {
     if (!meshRef.current) return;
-    particles.forEach((p, i) => { p.rot += p.speed; dummy.position.set(p.x, p.y, p.z); dummy.rotation.set(p.rot, p.rot, p.rot); dummy.scale.set(p.scale, p.scale, p.scale); dummy.updateMatrix(); meshRef.current.setMatrixAt(i, dummy.matrix); });
+    particles.forEach((p, i) => {
+      p.rot += p.rotSpeed;
+      p.x += p.vx;
+      p.z += p.vz; // Move X and Z only
+      if (Math.abs(p.x) > 60) p.x *= -0.9;
+      if (Math.abs(p.z) > 40) p.z *= -0.9;
+
+      dummy.position.set(p.x, p.y, p.z);
+      dummy.rotation.set(p.rot, p.rot, p.rot);
+      dummy.scale.set(p.scale, p.scale, p.scale);
+      dummy.updateMatrix();
+      meshRef.current.setMatrixAt(i, dummy.matrix);
+    });
     meshRef.current.instanceMatrix.needsUpdate = true;
   });
+
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
-      <dodecahedronGeometry args={[1, 0]} /> {asteroidTexture ? <meshStandardMaterial map={asteroidTexture} color="#cccccc" emissive="#222222" roughness={0.6} metalness={0.2} /> : <meshStandardMaterial color="#666" />}
+      <dodecahedronGeometry args={[1, 0]} /> 
+      {asteroidTexture ? (
+        <meshStandardMaterial map={asteroidTexture} color="#cccccc" emissive="#222222" roughness={0.6} metalness={0.2} />
+      ) : (
+        <meshStandardMaterial color="#666" />
+      )}
     </instancedMesh>
   );
 }
 
+/* 🌌 MAIN SCENE */
 export default function SpaceScene() {
   return (
     <div className="fixed inset-0 -z-10 bg-black">
@@ -209,11 +263,11 @@ export default function SpaceScene() {
         <Stars radius={300} depth={60} count={6000} factor={4} fade speed={0.5} />
         
         <EarthSystem />
-        <SleekUFO /> {/* <-- The New Sleek UFO */}
+        <SleekUFO /> {/* The New Smooth-Exit UFO */}
         
         <SingleSatellite speed={0.3} radius={2.2} offset={0} inclination={0.5} color="#FFD700" />
         <SingleSatellite speed={0.2} radius={2.8} offset={3} inclination={-0.5} color="#C0C0C0" />
-        <AsteroidBelt />
+        <AsteroidBelt /> {/* The Horizontal-Only Asteroids */}
       </Canvas>
     </div>
   );
