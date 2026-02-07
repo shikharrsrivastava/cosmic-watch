@@ -35,22 +35,20 @@ export default function Home() {
       {/* 🚀 HERO SECTION */}
       <section className="relative z-30 flex flex-col items-center pt-32 md:pt-40 px-4 text-center">
         
-        {/* SMALL BADGE */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mb-6 flex items-center gap-3 px-3 py-1 rounded-full border border-white/10 bg-black/50 backdrop-blur-md">
           <Globe className="w-3 h-3 text-cyan-400" /><span className="text-[10px] font-mono tracking-[0.2em] text-cyan-200 uppercase">Global Near-Earth Object Monitoring</span>
         </motion.div>
 
-        {/* 🛸 MAIN TITLE - REVEALED BY BEAM (Part 1) */}
+        {/* 🛸 MAIN TITLE */}
         <div className="relative">
              <motion.h1 
                initial={{ opacity: 0, clipPath: "inset(0 100% 0 0)" }}
                animate={{ opacity: 1, clipPath: "inset(0 0% 0 0)" }}
-               transition={{ duration: 0.7, delay: 2.1 }} // Starts when beam hits
+               transition={{ duration: 0.7, delay: 2.1 }} 
                className="text-5xl md:text-7xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/40 drop-shadow-2xl"
              >
                ORBITAL THREAT <br />INTELLIGENCE
              </motion.h1>
-             {/* Holographic scan overlay */}
              <motion.div 
                initial={{ top: 0, opacity: 0 }}
                animate={{ top: "100%", opacity: [0, 1, 0] }}
@@ -59,19 +57,19 @@ export default function Home() {
              />
         </div>
 
-        {/* 🛸 SUBTITLE - REVEALED BY BEAM (Part 2) */}
+        {/* 🛸 SUBTITLE */}
         <div className="relative mt-6 max-w-2xl">
             <motion.p 
               initial={{ opacity: 0, clipPath: "inset(0 100% 0 0)" }}
               animate={{ opacity: 1, clipPath: "inset(0 0% 0 0)" }}   
-              transition={{ duration: 0.6, delay: 2.8 }} // Starts after Title is done
+              transition={{ duration: 0.6, delay: 2.8 }} 
               className="text-sm md:text-base text-gray-400 font-mono leading-relaxed"
             >
               A full-stack platform transforming raw NASA NeoWs data into actionable insights. Track specific objects, calculate impact probabilities, and visualize cosmic threats in real-time.
             </motion.p>
         </div>
 
-        {/* BUTTONS (Wait for full scan) */}
+        {/* BUTTONS */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 3.5 }} className="mt-10 flex flex-col sm:flex-row gap-4 w-full justify-center">
           <button className="group relative px-8 py-3 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold tracking-widest uppercase rounded-sm overflow-hidden transition-all shadow-[0_0_20px_-5px_rgba(8,145,178,0.5)]"><span className="relative z-10 flex items-center gap-2">Launch Dashboard <ChevronRight className="w-4 h-4" /></span></button>
           <button className="px-8 py-3 border border-white/20 bg-black/30 hover:bg-white/5 backdrop-blur-md text-sm font-mono tracking-widest uppercase rounded-sm transition-all text-gray-300 hover:text-white">View Documentation</button>
@@ -85,7 +83,21 @@ export default function Home() {
           <InfoCard label="TRACKED OBJECTS" value="34,102" sub="Active NEOs" icon={<Radar className="w-4 h-4 text-cyan-400" />} delay={3.6} />
           <InfoCard label="HAZARDOUS BODIES" value="2,391" sub="Potentially Dangerous" icon={<ShieldAlert className="w-4 h-4 text-red-400" />} delay={3.7} />
           <InfoCard label="CLOSEST APPROACH" value="1.2 LD" sub="Lunar Distance" icon={<Globe className="w-4 h-4 text-purple-400" />} delay={3.8} />
-           <InfoCard label="COMMUNITY UPLINK" value="LIVE" sub="142 Researchers Online" icon={<MessageSquareDiff className="w-4 h-4 text-green-400" />} delay={3.9} />
+           
+           {/* THE GREEN LIGHT CARD */}
+           <InfoCard 
+             label="COMMUNITY UPLINK" 
+             value="LIVE" 
+             sub="142 Researchers Online" 
+             icon={<MessageSquareDiff className="w-4 h-4 text-green-400" />} 
+             delay={3.9} 
+             extra={
+                <div className="relative flex h-3 w-3 ml-3 mt-1">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]"></span>
+                </div>
+             }
+           />
         </div>
       </section>
 
@@ -97,11 +109,18 @@ export default function Home() {
   );
 }
 
-function InfoCard({ label, value, sub, icon, delay }: { label: string, value: string, sub: string, icon: any, delay: number }) {
+// 🎛️ UPDATED INFO CARD (Supports 'extra' prop correctly)
+function InfoCard({ label, value, sub, icon, delay, extra }: { label: string, value: string, sub: string, icon: any, delay: number, extra?: any }) {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: delay, duration: 0.5 }} className="p-4 border-l-2 border-white/10 bg-black/60 backdrop-blur-md hover:border-cyan-500/50 hover:bg-black/80 transition-all group">
       <div className="flex justify-between items-start mb-2"><span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">{label}</span>{icon}</div>
-      <div className="text-2xl font-bold text-white font-sans tracking-tight group-hover:text-cyan-400 transition-colors">{value}</div>
+      
+      {/* Flex container to hold Value + Light side-by-side */}
+      <div className="flex items-center">
+        <div className="text-2xl font-bold text-white font-sans tracking-tight group-hover:text-cyan-400 transition-colors">{value}</div>
+        {extra}
+      </div>
+      
       <div className="text-[10px] text-gray-400 mt-1 font-mono">{sub}</div>
     </motion.div>
   );

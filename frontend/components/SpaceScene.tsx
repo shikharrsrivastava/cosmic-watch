@@ -5,7 +5,7 @@ import { Stars, Sphere, useTexture, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import { useRef, useMemo, useState } from "react";
 
-/* 🛸 THE BEAM MATERIAL (High-Tech Scanner) */
+/* 🛸 THE BEAM MATERIAL */
 const beamMaterial = new THREE.ShaderMaterial({
   uniforms: {
     time: { value: 0 },
@@ -23,9 +23,7 @@ const beamMaterial = new THREE.ShaderMaterial({
     uniform vec3 color;
     varying vec2 vUv;
     void main() {
-      // Smooth gradient: Transparent at bottom, opaque at top
       float gradient = smoothstep(0.0, 1.0, vUv.y);
-      // Sci-fi scanner lines moving down
       float scanline = sin(vUv.y * 50.0 - time * 10.0) * 0.1;
       gl_FragColor = vec4(color, (gradient + scanline) * 0.25);
     }
@@ -36,7 +34,7 @@ const beamMaterial = new THREE.ShaderMaterial({
   blending: THREE.AdditiveBlending,
 });
 
-/* 🛸 SLEEK UFO COMPONENT - FASTER EXIT */
+/* 🛸 SLEEK UFO COMPONENT */
 function SleekUFO() {
   const groupRef = useRef<THREE.Group>(null);
   const ringRef = useRef<THREE.Mesh>(null);
@@ -48,7 +46,7 @@ function SleekUFO() {
     beamMaterial.uniforms.time.value = t;
 
     if (groupRef.current) {
-      // 1. FLY IN (0s - 2s)
+      // 1. FLY IN
       if (t < 2) {
         groupRef.current.position.set(
           THREE.MathUtils.lerp(-25, 0, t / 2),
@@ -57,52 +55,39 @@ function SleekUFO() {
         );
         groupRef.current.rotation.z = THREE.MathUtils.lerp(-0.5, 0, t / 2);
       } 
-      // 2. HOVER & SCAN (2s - 4s) --> REDUCED DURATION
-      // It now leaves at 4.0s instead of 6.0s
+      // 2. HOVER & SCAN
       else if (t >= 2 && t < 4.0) {
         groupRef.current.position.y = 4.5 + Math.sin(t * 2) * 0.1; 
         groupRef.current.rotation.z = Math.sin(t) * 0.05; 
-        
         if (!shooting) setShooting(true);
       }
-      // 3. SMOOTH EXIT (4s onwards)
+      // 3. EXIT
       else {
         setShooting(false);
-        
-        // Calculate exit progress (Starts at 4.0s, takes 2.5s to leave)
         const exitProgress = (t - 4.0) / 2.5;
-
         if (exitProgress <= 1) {
           groupRef.current.position.set(
-            THREE.MathUtils.lerp(0, 30, exitProgress),    // Fly Right
-            THREE.MathUtils.lerp(4.5, 15, exitProgress),  // Fly Up
-            THREE.MathUtils.lerp(0, -10, exitProgress)    // Fly Back
+            THREE.MathUtils.lerp(0, 30, exitProgress),
+            THREE.MathUtils.lerp(4.5, 15, exitProgress),
+            THREE.MathUtils.lerp(0, -10, exitProgress)
           );
-          
-          // Bank into the turn
           groupRef.current.rotation.z = THREE.MathUtils.lerp(0, -0.8, exitProgress); 
           groupRef.current.rotation.x = THREE.MathUtils.lerp(0.2, 0.5, exitProgress);
         } else {
-           // Keep momentum after lerp
            groupRef.current.position.x += 0.3;
            groupRef.current.position.y += 0.2;
         }
       }
     }
 
-    // Spin the outer ring
-    if (ringRef.current) {
-      ringRef.current.rotation.z += 0.15; 
-    }
+    if (ringRef.current) ringRef.current.rotation.z += 0.15; 
 
-    // Beam Logic - Snappy closing
     if (beamRef.current) {
       if (shooting) {
         beamRef.current.visible = true;
         const openProgress = Math.min(1, (t - 2) * 3);
         beamRef.current.scale.set(openProgress, 1, openProgress);
       } else {
-        // Close beam immediately when leaving
         beamRef.current.visible = false;
         beamRef.current.scale.set(0, 1, 0);
       }
@@ -112,23 +97,19 @@ function SleekUFO() {
   return (
     <group ref={groupRef} position={[-25, 12, 0]} scale={[0.5, 0.5, 0.5]}>
       <group rotation={[0.2, 0, 0]}>
-        {/* Core */}
         <mesh position={[0, 0.5, 0]}>
           <sphereGeometry args={[1, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2]} />
           <meshStandardMaterial color="#00ffff" emissive="#0088ff" emissiveIntensity={2} toneMapped={false} />
         </mesh>
-        {/* Hull */}
         <mesh scale={[1, 0.3, 1]}>
           <sphereGeometry args={[2.5, 32, 32]} />
           <meshStandardMaterial color="#333" metalness={1} roughness={0.1} envMapIntensity={3} />
         </mesh>
-        {/* Ring */}
         <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
            <torusGeometry args={[3, 0.05, 16, 100]} />
            <meshBasicMaterial color="#00ff00" toneMapped={false} />
         </mesh>
       </group>
-      {/* Beam */}
       <mesh ref={beamRef} position={[0, -8, 0]} visible={false} material={beamMaterial}>
         <cylinderGeometry args={[0.1, 9, 16, 32, 1, true]} />
       </mesh>
@@ -151,7 +132,7 @@ function EarthSystem() {
     if (moonRef.current) {
       moonRef.current.position.x = Math.sin(t * 0.2) * 6; 
       moonRef.current.position.z = Math.cos(t * 0.2) * 6;
-      moonRef.current.rotation.y = t * 0.4; // Fast rotation for visibility
+      moonRef.current.rotation.y = t * 0.4;
     }
   });
 
@@ -194,48 +175,61 @@ function SingleSatellite({ speed, radius, offset, inclination, color }: { speed:
   );
 }
 
-/* ☄️ HORIZONTALLY DRIFTING ASTEROID BELT */
+/* ☄️ RIVER FLOW ASTEROID BELT (High Density, Slow Motion) */
 function AsteroidBelt() {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const asteroidTexture = useTexture("/textures/asteroid.jpg", (t) => {}, () => {});
-  const count = 3000; 
+  
+  // 1. INCREASED COUNT (6000) for dense stream look
+  const count = 6000; 
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
   const particles = useMemo(() => {
     const temp = [];
     for (let i = 0; i < count; i++) {
-      const t = Math.random();
-      const xBase = (t - 0.5) * 45; 
-      const zBase = (xBase * xBase) * 0.04 - 10; 
-      const x = xBase + (Math.random() - 0.5) * 4;
-      const y = (Math.random() - 0.5) * 3; 
-      const z = zBase + (Math.random() - 0.5) * 4;
-      const baseSize = Math.random() * 0.06 + 0.01;
-      const scale = baseSize * (0.8 + Math.random() * 0.5); 
-      // Horizontal drift only (vy = 0)
-      const vx = (Math.random() - 0.5) * 0.005;
-      const vy = 0; 
-      const vz = (Math.random() - 0.5) * 0.005;
-      temp.push({ x, y, z, vx, vy, vz, scale, rotSpeed: (Math.random() - 0.5) * 0.002, rot: Math.random() * Math.PI });
+      const x = (Math.random() - 0.5) * 120; // Widen the highway slightly
+      const y = (Math.random() - 0.5) * 4;   
+      
+      // 2. SLOWER SPEED: Reduced by 4x for majestic flow
+      const speed = 0.005 + Math.random() * 0.005;
+
+      // 3. LARGER SIZE: Increased base scale slightly (0.02 -> 0.025) + variance
+      const scale = (Math.random() * 0.06 + 0.025) * (0.8 + Math.random() * 0.5); 
+      
+      temp.push({ 
+        x, y, 
+        zOffset: (Math.random() - 0.5) * 6, 
+        speed, 
+        scale, 
+        rotSpeed: (Math.random() - 0.5) * 0.01, 
+        rot: Math.random() * Math.PI 
+      });
     }
     return temp;
   }, [count]);
 
   useFrame(() => {
     if (!meshRef.current) return;
+    
     particles.forEach((p, i) => {
       p.rot += p.rotSpeed;
-      p.x += p.vx;
-      p.z += p.vz; // Move X and Z only
-      if (Math.abs(p.x) > 60) p.x *= -0.9;
-      if (Math.abs(p.z) > 40) p.z *= -0.9;
+      p.x += p.speed;
 
-      dummy.position.set(p.x, p.y, p.z);
+      // Wrap around for infinite loop
+      if (p.x > 60) p.x = -60;
+
+      // 4. PARABOLIC CURVE (U-SHAPE)
+      // z = (x^2) * 0.02 - 12
+      const z = (p.x * p.x) * 0.02 - 12 + p.zOffset;
+
+      dummy.position.set(p.x, p.y, z);
       dummy.rotation.set(p.rot, p.rot, p.rot);
       dummy.scale.set(p.scale, p.scale, p.scale);
       dummy.updateMatrix();
+      
       meshRef.current.setMatrixAt(i, dummy.matrix);
     });
+    
     meshRef.current.instanceMatrix.needsUpdate = true;
   });
 
@@ -263,11 +257,11 @@ export default function SpaceScene() {
         <Stars radius={300} depth={60} count={6000} factor={4} fade speed={0.5} />
         
         <EarthSystem />
-        <SleekUFO /> {/* The New Smooth-Exit UFO */}
+        <SleekUFO />
         
         <SingleSatellite speed={0.3} radius={2.2} offset={0} inclination={0.5} color="#FFD700" />
         <SingleSatellite speed={0.2} radius={2.8} offset={3} inclination={-0.5} color="#C0C0C0" />
-        <AsteroidBelt /> {/* The Horizontal-Only Asteroids */}
+        <AsteroidBelt />
       </Canvas>
     </div>
   );
